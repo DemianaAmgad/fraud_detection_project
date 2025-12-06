@@ -447,3 +447,101 @@ We used:
   - patients with inconsistent chronic condition patterns  
 
 These interpretability tools bridge the gap between machine learning outputs and human-led fraud investigations.
+
+
+## 6. Evaluation
+
+### 6.1 Validation Approach
+
+To ensure reliable performance assessment—especially under severe class imbalance—we used **stratified 5-fold cross-validation**.  
+This approach:
+
+- Preserves the fraud vs. non-fraud ratio in each fold  
+- Reduces variance in evaluation metrics  
+- Prevents overly optimistic results from lucky/non-representative splits  
+
+For final testing, an 80/20 train-test split was used after confirming cross-validation stability.
+
+---
+
+### 6.2 Evaluation Metrics
+
+Because fraud detection is an imbalanced classification problem, accuracy is not meaningful.  
+Instead, we rely on metrics that directly assess minority-class performance:
+
+- **Precision (Fraud class)**  
+  Measures how many flagged providers are actually fraudulent.  
+  High precision → fewer wasted investigations.
+
+- **Recall (Fraud class)**  
+  Measures how many fraudulent providers are successfully detected.  
+  High recall → fewer missed fraudulent actors.
+
+- **F1-Score**  
+  Harmonic mean of precision and recall.  
+  Useful for comparing models under imbalance.
+
+- **ROC-AUC**  
+  Measures ranking performance but can be misleading under high imbalance.
+
+- **PR-AUC (Recommended)**  
+  Most informative metric → focuses directly on minority-class predictions.
+
+The chosen primary metric: **PR-AUC**, supported by F1 and recall.
+
+---
+
+### 6.3 Confusion Matrix Interpretation
+
+A confusion matrix provides deeper insight into model behavior:
+
+- **True Positives (TP):** Fraud correctly detected  
+- **False Positives (FP):** Non-fraud flagged as fraud  
+- **True Negatives (TN):** Non-fraud correctly ignored  
+- **False Negatives (FN):** Fraud that the model failed to detect  
+
+Interpretation for fraud detection:
+
+- **High FP** → Waste investigation resources  
+- **High FN** → Missed fraud → Financial losses
+
+Given domain sensitivity, the priority is **minimizing FN** (maximizing recall), while maintaining an acceptable FP rate.
+
+---
+
+### 6.4 Error Analysis
+
+Detailed error analysis helps understand weaknesses and potential improvements.
+
+#### **False Positives (examples):**
+- Some legitimate providers were flagged due to:
+  - Very high claim diversity  
+  - Large numbers of distinct physicians  
+  - Exceptional patient populations (e.g., complex chronic conditions)  
+- These providers may operate in specialized or high-complexity fields, mimicking fraud patterns unintentionally.
+
+#### **False Negatives (examples):**
+- Some fraudulent providers were missed because:
+  - They had mostly normal behavior except for a few suspicious high-cost claims  
+  - Their patient volume was low, reducing statistical signals  
+  - Fraudulent behavior was subtle and blended into typical patterns
+
+This analysis highlights the need for future improvements such as:
+- More granular time-series modeling  
+- Referral-pattern network features  
+- Anomaly detection alongside supervised modeling
+
+---
+
+### 6.5 Model Limitations
+
+The following limitations should be acknowledged:
+
+- **Complex multi-table relationships** mean some subtle interactions may be lost during aggregation.
+- **Some fraud behaviors are intentional and adversarial**, making them hard to detect with supervised ML alone.
+- **Imbalanced data** still challenges model sensitivity, even with class weighting.
+- **Static tabular features** may miss dynamic fraud patterns (e.g., abrupt spikes in claim volume).
+
+These limitations motivate the future work and improvements described in Section 7.
+
+
