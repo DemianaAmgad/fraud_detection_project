@@ -66,6 +66,13 @@ This project aims to design and evaluate an **end-to-end fraud detection pipelin
 
 Together, these objectives support the larger goal: **detect high-risk providers in an explainable, data-driven way that is useful for real-world fraud investigation teams.**
 
+## 1.4 Team Members
+- Demiana Yakoob
+- Fatma AbdelHadi
+- Mohammed Abdelsattar
+- Yasser
+
+
 ## 2. Data Understanding & Exploration
 
 ### 2.1 Dataset Overview
