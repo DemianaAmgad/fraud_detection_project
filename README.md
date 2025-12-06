@@ -70,7 +70,7 @@ Together, these objectives support the larger goal: **detect high-risk providers
 - Demiana Yakoob
 - Fatma AbdelHadi
 - Mohammed Abdelsattar
-- Yasser
+- Mohammed Yasser
 
 
 ## 2. Data Understanding & Exploration
