@@ -65,3 +65,216 @@ This project aims to design and evaluate an **end-to-end fraud detection pipelin
   - How the model could be used in practice to prioritize investigations
 
 Together, these objectives support the larger goal: **detect high-risk providers in an explainable, data-driven way that is useful for real-world fraud investigation teams.**
+
+## 2. Data Understanding & Exploration
+
+### 2.1 Dataset Overview
+
+The project is built on a multi-table relational dataset commonly used for healthcare fraud detection. The dataset consists of the following files:
+
+- **Train_Beneficiarydata.csv**  
+  Contains patient demographic information (age, gender), chronic condition indicators, and mortality flags.
+
+- **Train_Inpatientdata.csv**  
+  Contains inpatient hospitalization claims, including diagnosis codes, procedure codes, lengths of stay, physician information, and reimbursement amounts.
+
+- **Train_Outpatientdata.csv**  
+  Contains outpatient or clinic visit claims with similar fields to the inpatient dataset but typically shorter encounters.
+
+- **Train_labels.csv**  
+  Provides **provider-level** fraud labels (1 = fraudulent, 0 = non-fraudulent).  
+  This is the target variable used for supervised learning.
+
+These tables must be merged and aggregated at the **provider level**, which is the primary unit of prediction.
+
+---
+
+### 2.2 Data Relationships
+
+The dataset is relational, with key identifiers linking the tables:
+
+- **BeneID**  
+  Links each beneficiary to their inpatient and outpatient claims.
+
+- **Provider**  
+  Links all claims and beneficiary interactions to the provider who submitted them.  
+  Each provider has exactly one label in `Train_labels.csv`.
+
+
+This structure requires consolidation across thousands of claim records into one row per provider through feature engineering.
+
+---
+
+### 2.3 Data Quality Checks
+
+During initial exploration, several quality issues must be identified and handled:
+
+- **Missing Values**  
+  - Some chronic condition indicators are missing for certain beneficiaries.  
+  - Mortality indicators may be absent or partially filled.
+
+- **Inconsistent or Extreme Claim Amounts**  
+  - Some inpatient and outpatient reimbursement amounts have extreme outliers, likely due to rare or complex procedures.  
+  - Zero or negative reimbursement amounts may occur due to adjustments.
+
+- **Duplicate Entries**  
+  - Some beneficiaries appear multiple times in beneficiary data.  
+  - Duplicate or near-duplicate claim entries exist in the claims tables.
+
+- **Skewed Distributions**  
+  - Claim amounts are right-skewed, which is typical in healthcare cost data.  
+  - Length-of-stay distributions show long tails.  
+  - Some providers file unusually high numbers of claims.
+
+Capturing, cleaning, and understanding these inconsistencies is crucial before aggregation and modeling.
+
+---
+
+### 2.4 Exploratory Data Analysis (EDA)
+
+Several important observations emerged during EDA:
+
+- **Class Imbalance**  
+  Fraudulent providers represent only ~10% of all labeled providers.  
+  This confirms the need for metrics such as recall, PR-AUC, and F1-score.
+
+- **Claim Amount Distributions**  
+  Inpatient and outpatient claim costs follow **right-skewed** distributions, with some providers submitting extremely high-cost procedures.
+
+- **Provider-Level Behavior Patterns**  
+  Aggregated features show that fraudulent providers often have:  
+  - Higher average claim costs  
+  - Greater diversity in procedure and diagnosis codes  
+  - Higher number of patients per provider  
+
+- **Correlation Heatmap**  
+  Engineered features (e.g., total reimbursement, number of diagnoses, average length of stay) exhibit correlations that indicate clusters of behavior (financial, procedural, beneficiary-related).
+
+- **Outlier Analysis**  
+  Outliers in cost, physician count, and patient volume may indicate unusual behavior but require careful interpretation to avoid punishing legitimate specialized providers.
+
+These EDA findings guide the feature engineering and model design decisions in later sections.
+
+## 3. Feature Engineering & Aggregation Strategy
+
+### 3.1 Why Aggregation Is Needed
+
+The original dataset is at the **claim level** and **beneficiary level**, while the prediction target (`Train_labels.csv`) is at the **provider level**.  
+
+A single provider may:
+
+- Treat hundreds of beneficiaries  
+- Submit thousands of inpatient and outpatient claims  
+- Generate high-dimensional, repetitive, and noisy raw data
+
+Machine learning models require a **fixed-length feature vector per provider**.  
+Thus, we aggregate inpatient, outpatient, and beneficiary information into **provider-level features**, summarizing financial behavior, care patterns, and patient characteristics.
+
+---
+
+### 3.2 Aggregation Choices (Required Features)
+
+The following groups of engineered features are essential and widely used in healthcare fraud detection.  
+They provide a comprehensive behavioral profile for each provider.
+
+---
+
+#### **A. Claim Volume Features**
+Capture provider activity level:
+
+- Number of inpatient claims  
+- Number of outpatient claims  
+- Total number of unique beneficiaries  
+- Ratio of inpatient to outpatient claims  
+
+These help detect unusually high utilization behavior.
+
+---
+
+#### **B. Financial Metrics**
+Fraudulent providers often display irregular financial patterns.
+
+Key aggregated metrics:
+
+- **Total reimbursement amount**  
+- **Average claim cost**  
+- **Maximum claim amount submitted**  
+- **Standard deviation of claim amounts**  
+- **Ratio of inpatient-to-outpatient cost**  
+- **Total reimbursement per beneficiary**
+
+These features highlight billing intensity and variability.
+
+---
+
+#### **C. Behavioral & Procedural Patterns**
+These describe provider practices:
+
+- **Average length of stay (inpatient)**  
+- **Number of distinct diagnosis codes**  
+- **Number of distinct procedure codes**  
+- **Number of unique physicians used across claims**  
+- **Frequency of specific procedure categories** (if available)
+
+Fraudulent providers often have:
+
+- unusually diverse procedure code patterns  
+- large physician networks  
+- inflated lengths of stay or procedure complexity  
+
+---
+
+#### **D. Beneficiary-Level Features**
+Irregular patterns among treated beneficiaries can indicate fraud.
+
+Important engineered features:
+
+- **Average patient age**  
+- **Percentage of beneficiaries with chronic conditions**  
+- **Number or proportion of deceased beneficiaries still receiving claims**  
+  *(strong fraud indicator)*  
+- **Average number of claims per beneficiary**  
+- **Chronic condition mix complexity**
+
+These help identify providers who treat unusually risky or suspicious patient populations.
+
+---
+
+### 3.3 Feature Cleaning & Encoding
+
+Several preprocessing steps are required after aggregation:
+
+- **Handling Missing Values**  
+  - Impute missing chronic condition flags  
+  - Replace missing diagnosis code fields with a placeholder  
+
+- **Encoding Categorical Variables**  
+  - One-hot encode categorical fields such as gender or procedure categories  
+  - Convert physician IDs into counts rather than explicit categories (to avoid high dimensionality)
+
+- **Normalization / Standardization**  
+  - Financial features like claim costs often span large ranges  
+  - Standardizing improves model stability for logistic regression or distance-based models  
+
+- **Outlier Treatment**  
+  - Extreme claim amounts may distort averages  
+  - Winsorization or log transformation may be applied if needed
+
+These steps ensure all features are clean, consistent, and machine-learning ready.
+
+---
+
+### 3.4 Final Aggregated Dataset
+
+After feature engineering, each provider is represented by a **single row**, containing:
+
+- Aggregated claim metrics  
+- Financial summaries  
+- Beneficiary characteristics  
+- Procedural and physician diversity indicators  
+- Behavioral patterns  
+- Final fraud label  
+
+This structured, provider-level dataset enables effective modeling and explainability.
+
+
