@@ -278,3 +278,85 @@ After feature engineering, each provider is represented by a **single row**, con
 This structured, provider-level dataset enables effective modeling and explainability.
 
 
+## 4. Handling Class Imbalance
+
+### 4.1 Problem Overview
+
+The fraud detection dataset is **highly imbalanced**, with only about **10%** of providers labeled as fraudulent.  
+This imbalance introduces several challenges:
+
+- **Accuracy becomes misleading**  
+  A naïve model predicting "non-fraud" for all providers would achieve ~90% accuracy but detect **zero fraud cases**, making it useless.
+
+- **Models may be biased toward the majority class**  
+  Without correction, many models learn to ignore minority-class signals.
+
+- **Recall is critical**  
+  Missing fraudulent providers (false negatives) leads to significant financial losses.
+
+For these reasons, specialized imbalance-handling strategies are essential.
+
+---
+
+### 4.2 Techniques Considered
+
+Three main categories of imbalance correction techniques were evaluated:
+
+#### **A. Class Weighting**
+Adjusts model training to penalize misclassification of the minority class more heavily.
+
+- Simple and stable  
+- Works well for tree-based models  
+- Does not modify the dataset  
+- Recommended for XGBoost, LightGBM, Random Forest, Logistic Regression  
+
+Formula for weighted loss:
+
+\[
+w_{\text{fraud}} = \frac{N}{2 \times N_{\text{fraud}}}, \quad 
+w_{\text{nonfraud}} = \frac{N}{2 \times N_{\text{nonfraud}}}
+\]
+
+---
+
+#### **B. Oversampling (e.g., SMOTE)**  
+Generates synthetic minority-class samples.
+
+- Helps logistic regression, SVM  
+- Can improve recall  
+- **Risk:** Synthetic data may introduce unrealistic patterns  
+- Not ideal for financial or irregular claim distributions
+
+---
+
+#### **C. Undersampling**
+Reduces the number of majority-class samples.
+
+- Fast and simple  
+- Can remove informative samples  
+- Useful only for baseline models
+
+---
+
+### 4.3 Chosen Strategy & Justification
+
+For this project, we adopted **class weighting** as the primary imbalance-handling method because:
+
+- It maintains the original data distribution and provider behavior.  
+- It avoids creating artificial synthetic patterns that reduce interpretability.  
+- It naturally integrates with tree-based models (e.g., Gradient Boosting, Random Forest).  
+- It supports strong performance on recall and F1-score without destabilizing the feature space.
+
+Oversampling was tested as part of experimentation but not selected for final modeling due to interpretability and reliability concerns.
+
+---
+
+### 4.4 Impact on Evaluation
+
+Using class weighting improves:
+
+- **Recall of fraudulent providers**  
+- **F1-score**, especially for the minority class  
+- **PR-AUC**, the most meaningful metric for imbalanced classification  
+
+This ensures the model identifies a meaningful proportion of fraudulent providers while keeping false positives at a manageable level.
