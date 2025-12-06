@@ -360,3 +360,90 @@ Using class weighting improves:
 - **PR-AUC**, the most meaningful metric for imbalanced classification  
 
 This ensures the model identifies a meaningful proportion of fraudulent providers while keeping false positives at a manageable level.
+
+
+## 5. Modeling
+
+### 5.1 Baseline Models
+
+To establish a performance baseline and understand the data characteristics, we trained two foundational models:
+
+#### **A. Logistic Regression**
+- Interpretable linear model suitable for tabular data  
+- Provides direct insight into feature importance via coefficients  
+- Useful for understanding directionality (positive/negative impact of features)  
+- Serves as a sanity check for whether aggregated features contain predictive signals
+
+Given the imbalanced nature of the dataset, logistic regression was trained with:
+- Class weights enabled  
+- Standardized numerical features  
+
+---
+
+#### **B. Random Forest**
+- Robust non-linear model suitable for datasets with mixed feature types  
+- Handles outliers and skewed distributions better than linear models  
+- Naturally captures feature interactions  
+- Provides feature importance based on impurity reduction  
+
+This model helps establish a non-linear baseline and identify which feature groups carry most predictive power.
+
+---
+
+### 5.2 Primary Model: Gradient Boosting (XGBoost / LightGBM)
+
+The final model selected for deployment was a **Gradient Boosting Machine (GBM)**, due to its strong performance on structured, financial, and behavioral datasets.
+
+#### **Why Gradient Boosting?**
+- Excellent performance on tabular data  
+- Captures non-linear patterns and interactions between features  
+- Handles skewed distributions without heavy preprocessing  
+- Supports class weighting  
+- Provides interpretable outputs using feature importance and SHAP values  
+- Robust to noise in aggregated financial metrics  
+
+GBM models are widely used in real-world fraud detection systems because they balance **accuracy, recall, and interpretability**.
+
+---
+
+### 5.3 Hyperparameter Tuning
+
+To optimize model performance, we performed systematic hyperparameter tuning using **randomized search** and cross-validation.
+
+Key parameters tuned:
+
+- **n_estimators** — number of boosting rounds  
+- **max_depth** — depth of each tree (controls model complexity)  
+- **learning_rate** — shrinkage applied to each tree’s contribution  
+- **subsample** — fraction of samples used per tree  
+- **colsample_bytree** — fraction of features used per tree  
+- **min_child_weight / min_data_in_leaf** — controls overfitting  
+- **scale_pos_weight** — class imbalance ratio  
+
+Cross-validation strategy:
+
+- **5-fold cross-validation**  
+- Stratified folds to preserve fraud distribution  
+
+This provides stable estimates of generalization performance.
+
+---
+
+### 5.4 Model Interpretability
+
+Understanding *why* a provider is flagged as fraudulent is crucial for real-world deployment.
+
+We used:
+
+- **Feature Importance**  
+  Identifies which aggregated behaviors most strongly influence predictions.
+
+- **SHAP (SHapley Additive exPlanations)**  
+  Provides local explanations for individual predictions.  
+  Investigators can review whether a provider was flagged due to:
+  - unusually high claim costs  
+  - excessive procedure diversity  
+  - abnormal inpatient/outpatient ratios  
+  - patients with inconsistent chronic condition patterns  
+
+These interpretability tools bridge the gap between machine learning outputs and human-led fraud investigations.
